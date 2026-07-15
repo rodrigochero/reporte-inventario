@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reporte de Inventario Automatizado</title>
+    <title>Reporte de Inventario Cloud</title>
     <!-- Tailwind CSS para diseño limpio -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
@@ -15,11 +15,11 @@
         <header class="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-6 mb-8 gap-4">
             <div>
                 <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Reporte General de Inventario</h1>
-                <p class="text-sm text-slate-500 mt-1">Agrega productos y visualiza el estado de tu almacén al instante.</p>
+                <p class="text-sm text-slate-500 mt-1">Base de datos en la nube (Firebase) en tiempo real activa.</p>
             </div>
             <div class="flex items-center gap-3">
                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    ● Modo Formulario Activo
+                    ● Cloud Firebase Activo
                 </span>
                 <button onclick="window.print()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-xs transition cursor-pointer">
                     Imprimir Reporte
@@ -59,7 +59,7 @@
                     </div>
                 </div>
                 <div>
-                    <button type="submit" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg shadow-xs transition cursor-pointer h-[38px]">
+                    <button type="submit" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-xs transition cursor-pointer h-[38px]">
                         + Añadir Producto
                     </button>
                 </div>
@@ -102,35 +102,55 @@
                             <th class="px-6 py-4 text-right">Precio Unitario</th>
                             <th class="px-6 py-4 text-right">Valor Total</th>
                             <th class="px-6 py-4 text-center">Estado</th>
+                            <th class="px-6 py-4 text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-inventario" class="divide-y divide-slate-100 text-sm">
-                        <!-- JavaScript llenará esta tabla de manera automática -->
+                        <tr>
+                            <td colspan="8" class="px-6 py-8 text-center text-slate-400">Cargando datos desde la nube...</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
         </section>
     </div>
 
-    <!-- LÓGICA DE PROGRAMACIÓN (JAVASCRIPT) -->
-    <script>
-        // Array base de inventario con datos iniciales
-        let inventario = [
-            { codigo: "PROD-01", nombre: "Zapatillas Urbanas", categoria: "Calzado", stock: 25, precio: 80.00 },
-            { codigo: "PROD-02", nombre: "Camiseta de Algodón", categoria: "Ropa", stock: 40, precio: 25.00 },
-            { codigo: "PROD-03", nombre: "Gorra Deportiva", categoria: "Accesorios", stock: 3, precio: 15.00 }
-        ];
+    <!-- LÓGICA CONEXIÓN CLOUD FIREBASE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Función encargada de dibujar la tabla y calcular las tarjetas
-        function renderizarInventario() {
+        // Aquí ya están pegadas tus llaves reales de Firebase, Rodrigo:
+        const firebaseConfig = {
+            apiKey: "AIzaSyDsIUW_zIxvyAgI9j8ozA0gKNnyMOZa-G4",
+            authDomain: "reporte-inventario-e381d.firebaseapp.com",
+            projectId: "reporte-inventario-e381d",
+            storageBucket: "reporte-inventario-e381d.firebasestorage.app",
+            messagingSenderId: "844382827246",
+            appId: "1:844382827246:web:abf77e3990769bb9e1b9ff",
+            measurementId: "G-MY99CYGZN7"
+        };
+
+        // Inicializar Firebase y la base de datos Firestore
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const productosRef = collection(db, "productos");
+
+        // Función para escuchar la base de datos en tiempo real
+        onSnapshot(productosRef, (snapshot) => {
             const tabla = document.getElementById("tabla-inventario");
             tabla.innerHTML = ""; 
 
             let totalStock = 0;
             let totalValor = 0;
             let alertasStock = 0;
+            let cantidadProductos = 0;
 
-            inventario.forEach(prod => {
+            snapshot.forEach((docSnap) => {
+                const prod = docSnap.data();
+                const idDoc = docSnap.id; 
+                cantidadProductos++;
+
                 const valorTotalProducto = prod.stock * prod.precio;
                 totalStock += prod.stock;
                 totalValor += valorTotalProducto;
@@ -152,22 +172,30 @@
                         <td class="px-6 py-4 text-right">$${prod.precio.toFixed(2)}</td>
                         <td class="px-6 py-4 text-right font-medium text-slate-900">$${valorTotalProducto.toFixed(2)}</td>
                         <td class="px-6 py-4 text-center">${estadoHTML}</td>
+                        <td class="px-6 py-4 text-center">
+                            <button onclick="eliminarProductoCloud('${idDoc}')" class="text-rose-600 hover:text-rose-900 font-medium text-xs cursor-pointer">
+                                Eliminar
+                            </button>
+                        </td>
                     </tr>
                 `;
                 tabla.innerHTML += fila;
             });
 
-            document.getElementById("kpi-unicos").innerText = inventario.length;
+            if(cantidadProductos === 0) {
+                tabla.innerHTML = `<tr><td colspan="8" class="px-6 py-8 text-center text-slate-400">No hay productos en la nube. ¡Agrega el primero!</td></tr>`;
+            }
+
+            document.getElementById("kpi-unicos").innerText = cantidadProductos;
             document.getElementById("kpi-stock").innerHTML = `${totalStock} <span class="text-sm font-normal text-slate-400">uds</span>`;
             document.getElementById("kpi-valor").innerText = `$${totalValor.toFixed(2)}`;
             document.getElementById("kpi-alertas").innerText = alertasStock;
-        }
+        });
 
-        // --- NUEVA LÓGICA DEL PASO 2: Capturar el formulario ---
-        document.getElementById("form-producto").addEventListener("submit", function(event) {
-            event.preventDefault(); // Evita que la página se recargue al enviar el formulario
+        // Enviar nuevo producto a la base de datos de Firebase
+        document.getElementById("form-producto").addEventListener("submit", async function(event) {
+            event.preventDefault(); 
 
-            // Capturar los valores escritos por el usuario
             const nuevoProducto = {
                 codigo: document.getElementById("input-codigo").value,
                 nombre: document.getElementById("input-nombre").value,
@@ -176,18 +204,17 @@
                 precio: parseFloat(document.getElementById("input-precio").value)
             };
 
-            // Añadir el nuevo objeto al array de inventario
-            inventario.push(nuevoProducto);
-
-            // Volver a dibujar la tabla y los KPIs con el nuevo producto incluido
-            renderizarInventario();
-
-            // Limpiar los campos del formulario para poder escribir otro
+            await addDoc(productosRef, nuevoProducto);
             document.getElementById("form-producto").reset();
         });
 
-        // Ejecución inicial
-        renderizarInventario();
+        // Hacer la función de eliminar accesible desde las filas
+        window.eliminarProductoCloud = async function(id) {
+            if (confirm("¿Seguro que quieres borrar este producto de la nube?")) {
+                const docRef = doc(db, "productos", id);
+                await deleteDoc(docRef);
+            }
+        }
     </script>
 </body>
 </html>
