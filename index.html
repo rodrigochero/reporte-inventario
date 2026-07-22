@@ -1,119 +1,387 @@
-<!-- ==================== LÓGICA JAVASCRIPT / FIREBASE ==================== -->
-<script type="module">
-  // Importaciones Oficiales de Firebase v10
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    deleteDoc, 
-    doc 
-  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-  import { 
-    getAuth, 
-    signInWithEmailAndPassword, 
-    onAuthStateChanged, 
-    signOut 
-  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS Inventory</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
 
-  // ⚠️ ASEGÚRATE DE PONER AQUÍ LAS CLAVES REALES DE TU CONSOLA DE FIREBASE:
-  // (Configuración del proyecto ⚙️ -> Tus apps -> SDK setup and configuration)
-  const firebaseConfig = {
-    apiKey: "TU_API_KEY_REAL",
-    authDomain: "reporte-inventario.firebaseapp.com",
-    projectId: "reporte-inventario",
-    storageBucket: "reporte-inventario.appspot.com",
-    messagingSenderId: "TU_SENDER_ID_REAL",
-    appId: "TU_APP_ID_REAL"
-  };
+  <!-- ══════════════ LOGIN / REGISTRO ══════════════ -->
+  <div id="login-screen">
+    <div class="glass-panel-glow login-container slide-up">
+      <div class="login-logo">NEXUS</div>
+      <div class="login-subtitle">Inventario Digital</div>
 
-  // Inicializar servicios
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
-  const productosRef = collection(db, "productos");
+      <div class="login-tabs">
+        <div class="login-tab active" data-tab="login">Ingresar</div>
+        <div class="login-tab" data-tab="register">Registrarse</div>
+      </div>
 
-  // DOM Elements
-  const seccionLogin = document.getElementById("seccion-login");
-  const seccionInventario = document.getElementById("seccion-inventario");
-  const formLogin = document.getElementById("form-login");
-  const errorLogin = document.getElementById("error-login");
-  const inputEmail = document.getElementById("login-email");
-  const inputPassword = document.getElementById("login-password");
+      <div id="login-error" class="login-error hidden"></div>
 
-  // Precargar datos de prueba para ingresar más rápido
-  if (inputEmail && inputPassword) {
-    inputEmail.value = "rodrigo20@gmail.com";
-    inputPassword.value = "12345679";
-  }
+      <form id="form-login" class="login-form">
+        <div>
+          <label class="cyber-label">Correo Electronico</label>
+          <div class="input-group">
+            <span class="input-icon">&#9993;</span>
+            <input type="email" class="cyber-input" id="login-email" placeholder="tu@email.com" required>
+          </div>
+        </div>
+        <div>
+          <label class="cyber-label">Contrasena</label>
+          <div class="input-group">
+            <span class="input-icon">&#128274;</span>
+            <input type="password" class="cyber-input" id="login-pass" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" required>
+          </div>
+        </div>
+        <button type="submit" class="btn-neon btn-filled" style="width:100%; padding:14px; font-size:13px;">ACCEDER</button>
+      </form>
 
-  // --- AUTENTICACIÓN: LOGIN ---
-  formLogin.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    errorLogin.classList.add("hidden");
+      <form id="form-register" class="login-form hidden">
+        <div>
+          <label class="cyber-label">Nombre Completo</label>
+          <div class="input-group">
+            <span class="input-icon">&#128100;</span>
+            <input type="text" class="cyber-input" id="reg-name" placeholder="Tu nombre" required>
+          </div>
+        </div>
+        <div>
+          <label class="cyber-label">Correo Electronico</label>
+          <div class="input-group">
+            <span class="input-icon">&#9993;</span>
+            <input type="email" class="cyber-input" id="reg-email" placeholder="tu@email.com" required>
+          </div>
+        </div>
+        <div>
+          <label class="cyber-label">Contrasena</label>
+          <div class="input-group">
+            <span class="input-icon">&#128274;</span>
+            <input type="password" class="cyber-input" id="reg-pass" placeholder="Minimo 6 caracteres" required minlength="6">
+          </div>
+        </div>
+        <div>
+          <label class="cyber-label">Confirmar Contrasena</label>
+          <div class="input-group">
+            <span class="input-icon">&#128274;</span>
+            <input type="password" class="cyber-input" id="reg-pass2" placeholder="Repite tu contrasena" required minlength="6">
+          </div>
+        </div>
+        <button type="submit" class="btn-neon btn-filled" style="width:100%; padding:14px; font-size:13px;">CREAR CUENTA</button>
+      </form>
+    </div>
+  </div>
 
-    const email = inputEmail.value.trim();
-    const password = inputPassword.value;
+  <!-- ══════════════ APLICACION ══════════════ -->
+  <div id="app-screen" class="hidden">
+    <div class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">&#9776;</div>
 
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      formLogin.reset();
-    } catch (error) {
-      console.error("Error al iniciar sesión:", error.code, error.message);
-      
-      // Mensajes de error personalizados según la respuesta de Firebase
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
-        errorLogin.textContent = "Correo o contraseña incorrectos en Firebase.";
-      } else if (error.code === 'auth/invalid-api-key') {
-        errorLogin.textContent = "Error: Revisa que tu apiKey en firebaseConfig sea la correcta.";
-      } else {
-        errorLogin.textContent = "Error de conexión/autenticación: " + error.message;
-      }
-      
-      errorLogin.classList.remove("hidden");
-    }
-  });
+    <!-- BARRA LATERAL -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <h1>NEXUS</h1>
+        <small>Sistema de Inventario</small>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-item active" data-page="dashboard">
+          <span class="icon">&#9632;</span> Dashboard
+        </div>
+        <div class="sidebar-item" data-page="inventario">
+          <span class="icon">&#9881;</span> Inventario
+        </div>
+        <div class="sidebar-item" data-page="todo">
+          <span class="icon">&#9745;</span> Tareas
+        </div>
+        <div class="sidebar-item" data-page="productos">
+          <span class="icon">&#9883;</span> Productos
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar" id="user-avatar">N</div>
+          <div>
+            <div class="user-name" id="user-display-name">Usuario</div>
+            <div class="user-email" id="user-display-email">user@email.com</div>
+          </div>
+        </div>
+        <button class="btn-neon btn-danger" style="width:100%; font-size:11px; padding:10px;" onclick="NexusApp.logout()">CERRAR SESION</button>
+      </div>
+    </aside>
 
-  // --- AUTENTICACIÓN: OBSERVAR ESTADO EN TIEMPO REAL ---
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      seccionLogin.classList.add("hidden");
-      seccionInventario.classList.remove("hidden");
-    } else {
-      seccionLogin.classList.remove("hidden");
-      seccionInventario.classList.add("hidden");
-    }
-  });
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="main-content">
 
-  // --- AUTENTICACIÓN: CERRAR SESIÓN ---
-  window.cerrarSesion = function() {
-    signOut(auth);
-  };
+      <!-- ═══ DASHBOARD ═══ -->
+      <section id="page-dashboard" class="page fade-in">
+        <div class="page-header">
+          <h2>Dashboard</h2>
+          <p>Resumen general del sistema</p>
+        </div>
+        <div class="stats-grid">
+          <div class="glass-panel stat-card">
+            <div class="stat-glow" style="background:var(--neon-cyan);"></div>
+            <div class="stat-icon">&#128230;</div>
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-label">Total Productos</div>
+          </div>
+          <div class="glass-panel stat-card">
+            <div class="stat-glow" style="background:var(--neon-green);"></div>
+            <div class="stat-icon">&#9989;</div>
+            <div class="stat-value" id="stat-stock-ok">0</div>
+            <div class="stat-label">Stock Normal</div>
+          </div>
+          <div class="glass-panel stat-card">
+            <div class="stat-glow" style="background:#ffc800;"></div>
+            <div class="stat-icon">&#9888;</div>
+            <div class="stat-value" id="stat-stock-med">0</div>
+            <div class="stat-label">Stock Medio</div>
+          </div>
+          <div class="glass-panel stat-card">
+            <div class="stat-glow" style="background:#ff3355;"></div>
+            <div class="stat-icon">&#128680;</div>
+            <div class="stat-value" id="stat-stock-low">0</div>
+            <div class="stat-label">Stock Bajo</div>
+          </div>
+          <div class="glass-panel stat-card">
+            <div class="stat-glow" style="background:var(--neon-purple);"></div>
+            <div class="stat-icon">&#128176;</div>
+            <div class="stat-value" id="stat-valor">$0</div>
+            <div class="stat-label">Valor Total</div>
+          </div>
+          <div class="glass-panel stat-card">
+            <div class="stat-glow" style="background:var(--neon-pink);"></div>
+            <div class="stat-icon">&#128203;</div>
+            <div class="stat-value" id="stat-tareas">0</div>
+            <div class="stat-label">Tareas Pendientes</div>
+          </div>
+        </div>
+        <div class="glass-panel" style="padding:24px;">
+          <h3 style="font-family:'Orbitron';font-size:14px;color:var(--neon-cyan);margin-bottom:16px;">ULTIMOS PRODUCTOS AGREGADOS</h3>
+          <div id="dash-recent" class="empty-state">
+            <div class="empty-icon">&#128230;</div>
+            <p>Agrega productos para verlos aqui</p>
+          </div>
+        </div>
+      </section>
 
-  // --- INVENTARIO: GUARDAR PRODUCTO EN FIREBASE ---
-  const formProducto = document.getElementById("form-producto");
-  if (formProducto) {
-    formProducto.addEventListener("submit", async function(event) {
-      event.preventDefault();
+      <!-- ═══ INVENTARIO / MOVIMIENTOS ═══ -->
+      <section id="page-inventario" class="page hidden fade-in">
+        <div class="page-header">
+          <h2>Movimientos de Inventario</h2>
+          <p>Registra entradas, salidas y agrega productos nuevos</p>
+        </div>
 
-      const nuevoProducto = {
-        codigo: document.getElementById("input-codigo").value,
-        nombre: document.getElementById("input-nombre").value,
-        categoria: document.getElementById("input-categoria").value,
-        stock: parseInt(document.getElementById("input-stock").value),
-        precio: parseFloat(document.getElementById("input-precio").value)
-      };
+        <!-- REGISTRAR MOVIMIENTO -->
+        <div class="glass-panel" style="padding:24px; margin-bottom:20px;">
+          <h3 style="font-family:'Orbitron';font-size:14px;color:var(--neon-cyan);margin-bottom:16px;">REGISTRAR MOVIMIENTO</h3>
+          <form id="form-movimiento" style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr auto; gap:12px; align-items:end;">
+            <div>
+              <label class="cyber-label">Producto</label>
+              <select class="cyber-select" id="mov-producto" required>
+                <option value="">Seleccionar...</option>
+              </select>
+            </div>
+            <div>
+              <label class="cyber-label">Tipo</label>
+              <select class="cyber-select" id="mov-tipo" required>
+                <option value="entrada">Entrada (+)</option>
+                <option value="salida">Salida (-)</option>
+              </select>
+            </div>
+            <div>
+              <label class="cyber-label">Cantidad</label>
+              <input type="number" class="cyber-input" id="mov-cantidad" min="1" placeholder="0" required>
+            </div>
+            <div>
+              <label class="cyber-label">Motivo</label>
+              <input type="text" class="cyber-input" id="mov-motivo" placeholder="Descripcion...">
+            </div>
+            <button type="submit" class="btn-neon btn-filled">REGISTRAR</button>
+          </form>
 
-      await addDoc(productosRef, nuevoProducto);
-      formProducto.reset();
-    });
-  }
+          <!-- AGREGADO RAPIDO DE PRODUCTO -->
+          <div class="quick-add-section">
+            <div class="quick-add-toggle" id="quick-add-toggle">
+              <span class="arrow">&#9660;</span>
+              <span class="label">Agregar producto nuevo</span>
+            </div>
 
-  // --- INVENTARIO: ELIMINAR PRODUCTO EN FIREBASE ---
-  window.eliminarProductoCloud = async function(id) {
-    if (confirm("¿Seguro que quieres borrar este producto de la nube?")) {
-      const docRef = doc(db, "productos", id);
-      await deleteDoc(docRef);
-    }
-  };
-</script>
+            <div id="quick-add-form" class="quick-add-form hidden">
+              <h4 style="font-family:'Orbitron';font-size:12px;color:var(--neon-purple);margin-bottom:14px;letter-spacing:1px;">NUEVO PRODUCTO</h4>
+              <form id="form-quick-product" style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr auto; gap:12px; align-items:end;">
+                <div>
+                  <label class="cyber-label">Codigo</label>
+                  <input type="text" class="cyber-input" id="qp-codigo" placeholder="P001" required>
+                </div>
+                <div>
+                  <label class="cyber-label">Nombre</label>
+                  <input type="text" class="cyber-input" id="qp-nombre" placeholder="Producto" required>
+                </div>
+                <div>
+                  <label class="cyber-label">Categoria</label>
+                  <select class="cyber-select" id="qp-categoria" required>
+                    <option value="">Seccionar...</option>
+                    <option value="Tecnologia">Tecnologia</option>
+                    <option value="Alimentos">Alimentos</option>
+                    <option value="Ropa">Ropa</option>
+                    <option value="Herramientas">Herramientas</option>
+                    <option value="Materiales">Materiales</option>
+                    <option value="Otros">Otros</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="cyber-label">Stock Inicial</label>
+                  <input type="number" class="cyber-input" id="qp-stock" min="0" placeholder="0" required>
+                </div>
+                <div>
+                  <label class="cyber-label">Precio ($)</label>
+                  <input type="number" class="cyber-input" id="qp-precio" min="0" step="0.01" placeholder="0.00" required>
+                </div>
+                <button type="submit" class="btn-neon btn-neon-purple">CREAR</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- HISTORIAL -->
+        <div class="glass-panel" style="padding:24px;">
+          <h3 style="font-family:'Orbitron';font-size:14px;color:var(--neon-cyan);margin-bottom:16px;">HISTORIAL</h3>
+          <div class="data-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Producto</th>
+                  <th>Tipo</th>
+                  <th>Cantidad</th>
+                  <th>Motivo</th>
+                </tr>
+              </thead>
+              <tbody id="movimientos-body"></tbody>
+            </table>
+          </div>
+          <div id="mov-empty" class="empty-state">
+            <div class="empty-icon">&#128203;</div>
+            <p>No hay movimientos registrados</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ TAREAS ═══ -->
+      <section id="page-todo" class="page hidden fade-in">
+        <div class="page-header">
+          <h2>Panel de Tareas</h2>
+          <p>Gestiona las tareas del inventario</p>
+        </div>
+        <div class="glass-panel" style="padding:24px;">
+          <form id="form-todo" class="todo-input-row">
+            <input type="text" class="cyber-input" id="todo-input" placeholder="Escribe una nueva tarea..." required>
+            <button type="submit" class="btn-neon btn-filled">AGREGAR</button>
+          </form>
+          <div class="todo-list" id="todo-list"></div>
+          <div id="todo-empty" class="empty-state">
+            <div class="empty-icon">&#9745;</div>
+            <p>No tienes tareas pendientes</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ PRODUCTOS ═══ -->
+      <section id="page-productos" class="page hidden fade-in">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <div>
+            <h2>Productos</h2>
+            <p>Catalogo completo de productos</p>
+          </div>
+          <button class="btn-neon btn-filled" onclick="NexusApp.openProductModal()">+ NUEVO PRODUCTO</button>
+        </div>
+        <div class="search-bar">
+          <input type="text" class="cyber-input" id="search-product" placeholder="Buscar producto por nombre, codigo o categoria...">
+        </div>
+        <div class="glass-panel" style="padding:24px;">
+          <div class="data-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Codigo</th>
+                  <th>Nombre</th>
+                  <th>Categoria</th>
+                  <th>Stock</th>
+                  <th>Precio</th>
+                  <th>Total</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="productos-body"></tbody>
+            </table>
+          </div>
+          <div id="productos-empty" class="empty-state">
+            <div class="empty-icon">&#128230;</div>
+            <p>No hay productos registrados</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ══════════════ MODAL PRODUCTO ══════════════ -->
+  <div id="modal-product" class="modal-overlay hidden">
+    <div class="glass-panel-glow modal-box">
+      <h3 id="modal-product-title">Nuevo Producto</h3>
+      <form id="form-product" style="display:flex;flex-direction:column;gap:16px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label class="cyber-label">Codigo</label>
+            <input type="text" class="cyber-input" id="prod-codigo" placeholder="Ej: P001" required>
+          </div>
+          <div>
+            <label class="cyber-label">Nombre</label>
+            <input type="text" class="cyber-input" id="prod-nombre" placeholder="Nombre del producto" required>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label class="cyber-label">Categoria</label>
+            <select class="cyber-select" id="prod-categoria" required>
+              <option value="">Seleccionar...</option>
+              <option value="Tecnologia">Tecnologia</option>
+              <option value="Alimentos">Alimentos</option>
+              <option value="Ropa">Ropa</option>
+              <option value="Herramientas">Herramientas</option>
+              <option value="Materiales">Materiales</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </div>
+          <div>
+            <label class="cyber-label">Stock</label>
+            <input type="number" class="cyber-input" id="prod-stock" min="0" placeholder="0" required>
+          </div>
+        </div>
+        <div>
+          <label class="cyber-label">Precio Unitario ($)</label>
+          <input type="number" class="cyber-input" id="prod-precio" min="0" step="0.01" placeholder="0.00" required>
+        </div>
+        <input type="hidden" id="prod-edit-id">
+        <div class="modal-actions">
+          <button type="button" class="btn-neon" onclick="NexusApp.closeProductModal()">CANCELAR</button>
+          <button type="submit" class="btn-neon btn-filled">GUARDAR</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════════ FIREBASE SDK ══════════════ -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <!-- ══════════════ SCRIPTS ══════════════ -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/database.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
