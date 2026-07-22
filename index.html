@@ -1,154 +1,119 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Inventario</title>
-  <!-- Tailwind CSS por CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-900 text-slate-100 font-sans antialiased min-h-screen">
+<!-- ==================== LÓGICA JAVASCRIPT / FIREBASE ==================== -->
+<script type="module">
+  // Importaciones Oficiales de Firebase v10
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    deleteDoc, 
+    doc 
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { 
+    getAuth, 
+    signInWithEmailAndPassword, 
+    onAuthStateChanged, 
+    signOut 
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-  <!-- ==================== 1. SECCIÓN DE LOGIN ==================== -->
-  <div id="seccion-login" class="min-h-screen flex items-center justify-center px-4">
-    <div class="max-w-md w-full bg-slate-800 p-8 rounded-xl shadow-2xl border border-slate-700">
-      <h2 class="text-2xl font-bold text-white text-center mb-2">Iniciar Sesión</h2>
-      <p class="text-slate-400 text-sm text-center mb-6">Accede para gestionar el inventario</p>
+  // ⚠️ ASEGÚRATE DE PONER AQUÍ LAS CLAVES REALES DE TU CONSOLA DE FIREBASE:
+  // (Configuración del proyecto ⚙️ -> Tus apps -> SDK setup and configuration)
+  const firebaseConfig = {
+    apiKey: "TU_API_KEY_REAL",
+    authDomain: "reporte-inventario.firebaseapp.com",
+    projectId: "reporte-inventario",
+    storageBucket: "reporte-inventario.appspot.com",
+    messagingSenderId: "TU_SENDER_ID_REAL",
+    appId: "TU_APP_ID_REAL"
+  };
+
+  // Inicializar servicios
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+  const productosRef = collection(db, "productos");
+
+  // DOM Elements
+  const seccionLogin = document.getElementById("seccion-login");
+  const seccionInventario = document.getElementById("seccion-inventario");
+  const formLogin = document.getElementById("form-login");
+  const errorLogin = document.getElementById("error-login");
+  const inputEmail = document.getElementById("login-email");
+  const inputPassword = document.getElementById("login-password");
+
+  // Precargar datos de prueba para ingresar más rápido
+  if (inputEmail && inputPassword) {
+    inputEmail.value = "rodrigo20@gmail.com";
+    inputPassword.value = "12345679";
+  }
+
+  // --- AUTENTICACIÓN: LOGIN ---
+  formLogin.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    errorLogin.classList.add("hidden");
+
+    const email = inputEmail.value.trim();
+    const password = inputPassword.value;
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      formLogin.reset();
+    } catch (error) {
+      console.error("Error al iniciar sesión:", error.code, error.message);
       
-      <!-- Alerta de Error -->
-      <div id="error-login" class="hidden bg-red-500/10 border border-red-500 text-red-500 text-sm p-3 rounded-lg mb-4 text-center"></div>
-
-      <form id="form-login" class="space-y-4">
-        <div>
-          <label class="block text-slate-300 text-sm font-medium mb-1">Correo Electrónico</label>
-          <input type="email" id="login-email" required class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="admin@empresa.com">
-        </div>
-        <div>
-          <label class="block text-slate-300 text-sm font-medium mb-1">Contraseña</label>
-          <input type="password" id="login-password" required class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="••••••••">
-        </div>
-        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium p-2.5 rounded-lg transition duration-200">
-          Ingresar
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- ==================== 2. SECCIÓN DE INVENTARIO ==================== -->
-  <div id="seccion-inventario" class="hidden p-6 max-w-7xl mx-auto">
-    <!-- Encabezado con Botón de Salir -->
-    <header class="flex justify-between items-center mb-8 bg-slate-800 p-4 rounded-xl border border-slate-700">
-      <h1 class="text-xl font-bold text-white">Panel de Inventario</h1>
-      <button onclick="cerrarSesion()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200">
-        Cerrar Sesión
-      </button>
-    </header>
-
-    <!-- PEGA AQUÍ TU TABLA Y FORMULARIO DE INVENTARIO ACTUAL -->
-    <main>
-      <!-- Ejemplo: <form id="form-producto"> ... </form> -->
-    </main>
-  </div>
-
-  <!-- ==================== 3. LÓGICA JAVASCRIPT / FIREBASE ==================== -->
-  <script type="module">
-    // Importaciones Oficiales de Firebase v10
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { 
-      getFirestore, 
-      collection, 
-      addDoc, 
-      deleteDoc, 
-      doc 
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { 
-      getAuth, 
-      signInWithEmailAndPassword, 
-      onAuthStateChanged, 
-      signOut 
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-    // ⚠️ REEMPLAZA ESTE OBJETO CON TUS CREDENCIALES REALES DE FIREBASE
-    const firebaseConfig = {
-      apiKey: "TU_API_KEY",
-      authDomain: "TU_PROJECT.firebaseapp.com",
-      projectId: "TU_PROJECT_ID",
-      storageBucket: "TU_PROJECT.appspot.com",
-      messagingSenderId: "TU_SENDER_ID",
-      appId: "TU_APP_ID"
-    };
-
-    // Inicializar servicios
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    const productosRef = collection(db, "productos");
-
-    // DOM Elements
-    const seccionLogin = document.getElementById("seccion-login");
-    const seccionInventario = document.getElementById("seccion-inventario");
-    const formLogin = document.getElementById("form-login");
-    const errorLogin = document.getElementById("error-login");
-
-    // --- AUTENTICACIÓN: LOGIN ---
-    formLogin.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      errorLogin.classList.add("hidden");
-
-      const email = document.getElementById("login-email").value;
-      const password = document.getElementById("login-password").value;
-
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-        formLogin.reset();
-      } catch (error) {
-        errorLogin.textContent = "Correo o contraseña incorrectos.";
-        errorLogin.classList.remove("hidden");
-      }
-    });
-
-    // --- AUTENTICACIÓN: OBSERVAR ESTADO ---
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        seccionLogin.classList.add("hidden");
-        seccionInventario.classList.remove("hidden");
+      // Mensajes de error personalizados según la respuesta de Firebase
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        errorLogin.textContent = "Correo o contraseña incorrectos en Firebase.";
+      } else if (error.code === 'auth/invalid-api-key') {
+        errorLogin.textContent = "Error: Revisa que tu apiKey en firebaseConfig sea la correcta.";
       } else {
-        seccionLogin.classList.remove("hidden");
-        seccionInventario.classList.add("hidden");
+        errorLogin.textContent = "Error de conexión/autenticación: " + error.message;
       }
-    });
-
-    // --- AUTENTICACIÓN: CERRAR SESIÓN ---
-    window.cerrarSesion = function() {
-      signOut(auth);
-    };
-
-    // --- INVENTARIO: GUARDAR PRODUCTO EN FIREBASE ---
-    const formProducto = document.getElementById("form-producto");
-    if (formProducto) {
-      formProducto.addEventListener("submit", async function(event) {
-        event.preventDefault();
-
-        const nuevoProducto = {
-          codigo: document.getElementById("input-codigo").value,
-          nombre: document.getElementById("input-nombre").value,
-          categoria: document.getElementById("input-categoria").value,
-          stock: parseInt(document.getElementById("input-stock").value),
-          precio: parseFloat(document.getElementById("input-precio").value)
-        };
-
-        await addDoc(productosRef, nuevoProducto);
-        formProducto.reset();
-      });
+      
+      errorLogin.classList.remove("hidden");
     }
+  });
 
-    // --- INVENTARIO: ELIMINAR PRODUCTO EN FIREBASE ---
-    window.eliminarProductoCloud = async function(id) {
-      if (confirm("¿Seguro que quieres borrar este producto de la nube?")) {
-        const docRef = doc(db, "productos", id);
-        await deleteDoc(docRef);
-      }
-    };
-  </script>
-</body>
-</html>
+  // --- AUTENTICACIÓN: OBSERVAR ESTADO EN TIEMPO REAL ---
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      seccionLogin.classList.add("hidden");
+      seccionInventario.classList.remove("hidden");
+    } else {
+      seccionLogin.classList.remove("hidden");
+      seccionInventario.classList.add("hidden");
+    }
+  });
+
+  // --- AUTENTICACIÓN: CERRAR SESIÓN ---
+  window.cerrarSesion = function() {
+    signOut(auth);
+  };
+
+  // --- INVENTARIO: GUARDAR PRODUCTO EN FIREBASE ---
+  const formProducto = document.getElementById("form-producto");
+  if (formProducto) {
+    formProducto.addEventListener("submit", async function(event) {
+      event.preventDefault();
+
+      const nuevoProducto = {
+        codigo: document.getElementById("input-codigo").value,
+        nombre: document.getElementById("input-nombre").value,
+        categoria: document.getElementById("input-categoria").value,
+        stock: parseInt(document.getElementById("input-stock").value),
+        precio: parseFloat(document.getElementById("input-precio").value)
+      };
+
+      await addDoc(productosRef, nuevoProducto);
+      formProducto.reset();
+    });
+  }
+
+  // --- INVENTARIO: ELIMINAR PRODUCTO EN FIREBASE ---
+  window.eliminarProductoCloud = async function(id) {
+    if (confirm("¿Seguro que quieres borrar este producto de la nube?")) {
+      const docRef = doc(db, "productos", id);
+      await deleteDoc(docRef);
+    }
+  };
+</script>
